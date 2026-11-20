@@ -32,6 +32,35 @@ func TestDemonRiftMultiEpicsPreserveRealPoolAndFragmentGuarantee(t *testing.T) {
 	}
 }
 
+func TestRiftCountTierGuaranteesPieceRange(t *testing.T) {
+	t.Cleanup(func() { riftPieceCountOverride.Store(-1) })
+	def := currentRiftLootDefinition{Equipment: []uint32{10, 11}, Pieces: []uint32{20, 21}, MultiEpicCount: true, PVFEpicCounts: []privatePVFEpicCount{{1, 500000}, {2, 300000}, {3, 150000}, {4, 50000}}}
+	if err := setRiftPieceCountOverride(5); err != nil {
+		t.Fatal(err)
+	}
+	var seen [6]bool
+	for seed := uint32(1); seed <= 2000; seed++ {
+		epics := len(def.selectItems(newCurrentDungeonDropLCG(seed)))
+		if epics < 1 || epics > 5 {
+			t.Fatalf("count tier seed=%d epics=%d", seed, epics)
+		}
+		seen[epics] = true
+	}
+	for n := 1; n <= 5; n++ {
+		if !seen[n] {
+			t.Fatalf("count tier never observed %d equipment", n)
+		}
+	}
+	if err := setRiftPieceCountOverride(0); err != nil {
+		t.Fatal(err)
+	}
+	for seed := uint32(1); seed <= 100; seed++ {
+		if got := len(def.selectItems(newCurrentDungeonDropLCG(seed))); got != 0 {
+			t.Fatalf("off tier seed=%d items=%d", seed, got)
+		}
+	}
+}
+
 func TestRiftEpicRateOverrideGatesMultiEpicCount(t *testing.T) {
 	t.Cleanup(func() { riftEpicRateOverride.Store(-1) })
 	def := currentRiftLootDefinition{Equipment: []uint32{10, 11}, Pieces: []uint32{20, 21}, FragmentCount: 10, MultiEpicCount: true, PVFEpicCounts: []privatePVFEpicCount{{1, 500000}, {2, 300000}, {3, 150000}, {4, 50000}}}
