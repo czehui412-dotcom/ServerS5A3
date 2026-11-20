@@ -25,6 +25,15 @@ func TestHellCountTierExcludesRateTier(t *testing.T) {
 	if got := hellPieceCount(); got != -1 {
 		t.Fatalf("clear rate did not clear count tier: %d", got)
 	}
+	if err := setNativeHellRateOverride(125); err != nil {
+		t.Fatal(err)
+	}
+	if err := setHellPieceCountOverride(-1); err != nil {
+		t.Fatal(err)
+	}
+	if got := int(nativeHellRateOverride.Load()); got != -1 {
+		t.Fatalf("clear count did not clear rate tier: %d", got)
+	}
 }
 
 func TestHellCountTierValidation(t *testing.T) {
