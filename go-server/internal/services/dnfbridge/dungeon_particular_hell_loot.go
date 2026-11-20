@@ -151,15 +151,24 @@ func (definition *currentRiftLootDefinition) selectItems(rng *currentDungeonDrop
 	epics := 0
 	roll := rng.Next(dnfdrops.EpicClearProbabilityBound)
 	if definition.MultiEpicCount {
-		for _, row := range definition.PVFEpicCounts {
-			if roll < row.weight {
-				epics = row.count
-				break
+		effective, _ := riftEpicRate(1)
+		// 316: PVF count table is a conditional distribution summing to 1e6.
+		// The PVF baseline maps to 1000 per-mille, so an active override gates
+		// whether that table applies at all; 1000 keeps the original behaviour.
+		if rng.Next(1000) < effective {
+			for _, row := range definition.PVFEpicCounts {
+				if roll < row.weight {
+					epics = row.count
+					break
+				}
+				roll -= row.weight
 			}
-			roll -= row.weight
 		}
-	} else if float64(roll) < definition.EpicRate*1000000 {
-		epics = 1
+	} else {
+		effective, _ := riftEpicRate(definition.EpicRate)
+		if roll < effective*1000 {
+			epics = 1
+		}
 	}
 	for i := 0; i < epics; i++ {
 		index := 0

@@ -319,6 +319,24 @@ func (a *accountAPIServer) handleGameAdmin(w http.ResponseWriter, r *http.Reques
 		out.HellDropRate = &adminapi.HellDropRateStatus{
 			Rate: effective, Override: override, PVFBaseline: baseline, Scale: 1000,
 		}
+	case "get_rift_drop_rate", "set_rift_drop_rate":
+		if req.Action == "set_rift_drop_rate" {
+			if req.RiftDropRate == nil {
+				out.OK = false
+				out.Error = "missing riftDropRate"
+				break
+			}
+			if err := setRiftEpicRateOverride(*req.RiftDropRate); err != nil {
+				out.OK = false
+				out.Error = err.Error()
+				break
+			}
+			s.logInfo("game-admin-rift-drop-rate-set", "rate", *req.RiftDropRate)
+		}
+		effective, override := riftEpicRate(1)
+		out.RiftDropRate = &adminapi.RiftDropRateStatus{
+			Rate: effective, Override: override, PVFBaseline: 1000, Scale: 1000,
+		}
 	case "registration_invites", "registration_invite_save", "registration_records", "registration_unbind":
 		a.handleRegistrationAdmin(r.Context(), req, &out)
 	default:
