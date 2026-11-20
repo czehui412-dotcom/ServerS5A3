@@ -150,7 +150,14 @@ func (definition *currentRiftLootDefinition) selectItems(rng *currentDungeonDrop
 	}
 	epics := 0
 	roll := rng.Next(dnfdrops.EpicClearProbabilityBound)
-	if definition.MultiEpicCount {
+	if count := riftPieceCount(); count >= 0 {
+		// GM count tier: 0 disables equipment, 2..5 gives a guaranteed first
+		// piece plus a uniform 0..N-1 extra. The already-consumed roll keeps
+		// downstream material RNG identical to the PVF path.
+		if count >= 2 {
+			epics = 1 + roll%count
+		}
+	} else if definition.MultiEpicCount {
 		effective, _ := riftEpicRate(1)
 		// 316: PVF count table is a conditional distribution summing to 1e6.
 		// The PVF baseline maps to 1000 per-mille, so an active override gates
