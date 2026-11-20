@@ -38,17 +38,17 @@ func TestRiftCountTierGuaranteesPieceRange(t *testing.T) {
 	if err := setRiftPieceCountOverride(5); err != nil {
 		t.Fatal(err)
 	}
-	var seen [6]bool
-	for seed := uint32(1); seed <= 2000; seed++ {
+	var seen [6]int
+	for seed := uint32(1); seed <= 5000; seed++ {
 		epics := len(def.selectItems(newCurrentDungeonDropLCG(seed)))
 		if epics < 1 || epics > 5 {
 			t.Fatalf("count tier seed=%d epics=%d", seed, epics)
 		}
-		seen[epics] = true
+		seen[epics]++
 	}
 	for n := 1; n <= 5; n++ {
-		if !seen[n] {
-			t.Fatalf("count tier never observed %d equipment", n)
+		if seen[n] < 200 {
+			t.Fatalf("count tier %d observed only %d times: %+v", n, seen[n], seen)
 		}
 	}
 	if err := setRiftPieceCountOverride(0); err != nil {

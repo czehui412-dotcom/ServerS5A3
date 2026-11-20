@@ -30,22 +30,36 @@ func fixedCountTestRequest(catalog *pvfDungeonDropCatalog, seed uint32) hellPart
 	}
 }
 
-func TestFixedCountHellRewardHonorsTierAndPreservesRoomRNG(t *testing.T) {
+func TestFixedCountHellRewardRandomizesTierAndPreservesRoomRNG(t *testing.T) {
 	catalog := fixedCountTestCatalog(t)
+	seen := map[int]int{}
+	for roomSeed := uint32(1); roomSeed <= 1000; roomSeed++ {
+		fixed, err := currentFixedCountHellReward(fixedCountTestRequest(catalog, 7), 4, roomSeed)
+		if err != nil {
+			t.Fatal(err)
+		}
+		count := len(fixed.Selected)
+		if count < 1 || count > 4 {
+			t.Fatalf("roomSeed=%d selected=%d", roomSeed, count)
+		}
+		seen[count]++
+	}
+	for n := 1; n <= 4; n++ {
+		if seen[n] < 50 {
+			t.Fatalf("count %d observed only %d times: %+v", n, seen[n], seen)
+		}
+	}
+
 	replay := fixedCountTestRequest(catalog, 7)
 	if _, err := currentNativePVFHellReward(replay); err != nil {
 		t.Fatal(err)
 	}
-
 	request := fixedCountTestRequest(catalog, 7)
 	fixed, err := currentFixedCountHellReward(request, 4, 99)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(fixed.Selected) != 4 {
-		t.Fatalf("selected=%d want=4", len(fixed.Selected))
-	}
-	if fixed.RateSource != "runtime_count_tier" || !fixed.RateOverridden {
+	if !strings.HasPrefix(fixed.RateSource, "runtime_count_tier:") || !fixed.RateOverridden {
 		t.Fatalf("fixed tier metadata missing: %+v", fixed)
 	}
 	if request.rng.Seed() != replay.rng.Seed() {
