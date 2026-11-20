@@ -25,6 +25,15 @@ func TestRiftCountTierExcludesRateTier(t *testing.T) {
 	if got := riftPieceCount(); got != -1 {
 		t.Fatalf("clear rate did not clear count tier: %d", got)
 	}
+	if err := setRiftEpicRateOverride(500); err != nil {
+		t.Fatal(err)
+	}
+	if err := setRiftPieceCountOverride(-1); err != nil {
+		t.Fatal(err)
+	}
+	if got := int(riftEpicRateOverride.Load()); got != -1 {
+		t.Fatalf("clear count did not clear rate tier: %d", got)
+	}
 }
 
 func TestRiftCountTierValidation(t *testing.T) {
