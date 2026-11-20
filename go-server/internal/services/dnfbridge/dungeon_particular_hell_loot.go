@@ -143,20 +143,30 @@ func (s *Service) prepareCurrentRiftLoot(difficulty byte) (*currentRiftLootDefin
 	return &definition, nil
 }
 
+// riftCountTierTarget picks the final 1..N piece count from a private stream
+// seeded by the boss RNG state, so the tier is genuinely random while the main
+// room RNG stream is still consumed exactly as before.
+func riftCountTierTarget(seed uint32, count int) int {
+	if count <= 0 {
+		return 0
+	}
+	return 1 + newCurrentDungeonDropLCG(seed).Next(count)
+}
+
 func (definition *currentRiftLootDefinition) selectItems(rng *currentDungeonDropLCG) []hellPartyRewardItem {
+	count := riftPieceCount()
+	countTarget := riftCountTierTarget(rng.Seed(), count)
 	items := make([]hellPartyRewardItem, 0, definition.FragmentCount+1)
 	for i := 0; i < definition.FragmentCount; i++ {
 		items = append(items, hellPartyRewardItem{ItemID: definition.Pieces[rng.Next(len(definition.Pieces))], Amount: 1})
 	}
 	epics := 0
 	roll := rng.Next(dnfdrops.EpicClearProbabilityBound)
-	if count := riftPieceCount(); count >= 0 {
-		// GM count tier: 0 disables equipment, 2..5 gives a guaranteed first
-		// piece plus a uniform 0..N-1 extra. The already-consumed roll keeps
-		// downstream material RNG identical to the PVF path.
-		if count >= 2 {
-			epics = 1 + roll%count
-		}
+	if count >= 0 {
+		// GM count tier: pick one target in 1..N from a private stream and
+		// grant exactly that many pieces. The main roll is still consumed
+		// so downstream material RNG stays identical to the PVF path.
+		epics = countTarget
 	} else if definition.MultiEpicCount {
 		effective, _ := riftEpicRate(1)
 		// 316: PVF count table is a conditional distribution summing to 1e6.
@@ -225,6 +235,7 @@ func (s *Service) planCurrentRiftBossDrops(session *gameSession, runtime *runtim
 		materialRules = special.MaterialByDungeon[runtime.Dungeon.ID]
 	}
 	for _, recipient := range partyDungeonDropRecipients(runtime, session.selectedCharacterID, currentSceneActorObjectKey(session.selectedCharacterID)) {
+		countTarget := riftCountTierTarget(visit.DropRNG, riftPieceCount())
 		selected := definition.selectItems(rng)
 		// 此入口已由权威领主死亡触发；裂缝专用史诗奖励也保留耗疲劳领主的碳结晶体。
 		if currentDungeonCarbonCrystalEligible(runtime, definition.DropCatalog) {
@@ -243,7 +254,7 @@ func (s *Service) planCurrentRiftBossDrops(session *gameSession, runtime *runtim
 			return nil, err
 		}
 		wires = append(wires, memberWires...)
-		s.logGameEvent(session, "game-rift-boss-loot-registered", "dungeon_id", runtime.Dungeon.ID, "recipient_char_id", recipient.CharacterID, "fragment_count", definition.FragmentCount, "epic_probability", definition.EpicRate, "probability_source", definition.RateSource, "multi_epic_count", definition.MultiEpicCount, "items", hellPartyRewardItemList(selected), "source", "particularhellparty_pool_and_epicpieceinfo_mapping")
+		s.logGameEvent(session, "game-rift-boss-loot-registered", "dungeon_id", runtime.Dungeon.ID, "recipient_char_id", recipient.CharacterID, "fragment_count", definition.FragmentCount, "epic_probability", definition.EpicRate, "probability_source", definition.RateSource, "multi_epic_count", definition.MultiEpicCount, "count_tier_target", countTarget, "items", hellPartyRewardItemList(selected), "source", "particularhellparty_pool_and_epicpieceinfo_mapping")
 	}
 	return wires, nil
 }

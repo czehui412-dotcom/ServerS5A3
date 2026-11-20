@@ -1,5 +1,7 @@
 package dnfbridge
 
+import "fmt"
+
 // currentFixedCountHellReward implements the GM "guaranteed 1..N pieces" tier.
 // It first consumes the exact native PVF RNG stream so the separate epic-piece
 // guarantee that runs later in the same room keeps its original sequence, then
@@ -19,7 +21,10 @@ func currentFixedCountHellReward(request hellPartyRewardRequest, max int, roomSe
 
 	pick := request
 	pick.rng = newCurrentDungeonDropLCG(roomSeed)
-	pick.RewardRollCount = int64(max * 3)
+	// The tier is a range, not a fixed grant: choose one target in 1..max
+	// from a private stream, then force exactly that many pieces.
+	target := 1 + pick.rng.Next(max)
+	pick.RewardRollCount = int64(target * 3)
 	forced := hellPartyRewardDropChanceDenominator - 1
 	picked, err := currentNativePVFHellRewardWithChance(pick, &forced)
 	if err != nil {
@@ -27,13 +32,13 @@ func currentFixedCountHellReward(request hellPartyRewardRequest, max int, roomSe
 	}
 
 	native.Selected = append([]hellPartyRewardItem(nil), picked.Selected...)
-	if len(native.Selected) > max {
-		native.Selected = native.Selected[:max]
+	if len(native.Selected) > target {
+		native.Selected = native.Selected[:target]
 	}
-	for len(native.Selected) < max && len(picked.Selected) > 0 {
+	for len(native.Selected) < target && len(picked.Selected) > 0 {
 		native.Selected = append(native.Selected, picked.Selected[len(native.Selected)%len(picked.Selected)])
 	}
-	native.RateSource = "runtime_count_tier"
+	native.RateSource = fmt.Sprintf("runtime_count_tier:%d", target)
 	native.RateOverridden = true
 	return native, nil
 }
