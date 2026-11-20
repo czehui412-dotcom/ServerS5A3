@@ -16,6 +16,8 @@ func setRiftEpicRateOverride(rate int) error {
 	if rate < -1 || rate > 1000 {
 		return fmt.Errorf("rift epic rate must be -1..1000 per-mille")
 	}
+	// Rate tiers (including the -1 clear) replace count tiers, never stack.
+	riftPieceCountOverride.Store(-1)
 	riftEpicRateOverride.Store(int32(rate))
 	return nil
 }
