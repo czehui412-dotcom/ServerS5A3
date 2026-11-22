@@ -52,6 +52,25 @@ type Request struct {
 	RiftDropRate *int `json:"riftDropRate,omitempty"`
 	// 时空裂缝保底件数档：-1=退出件数档；0=关闭；2..5=每次 1..N 件。
 	RiftDropCount *int `json:"riftDropCount,omitempty"`
+	// 维护模式：op=enter 踢全部在线；op=status 只读当前维护标记。
+	Maintenance *MaintenanceChange `json:"maintenance,omitempty"`
+}
+
+// MaintenanceChange 是维护模式的开关请求。Op: "enter" | "leave" | "status"。
+// enter 会关闭所有在线会话的 socket（走既有断连落盘路径），leave/status 只改/读标记。
+type MaintenanceChange struct {
+	Op      string `json:"op"`
+	Message string `json:"message,omitempty"`
+	Actor   string `json:"actor,omitempty"`
+}
+
+// MaintenanceStatus 是维护模式当前状态。
+type MaintenanceStatus struct {
+	Enabled   bool   `json:"enabled"`
+	Message   string `json:"message,omitempty"`
+	Since     string `json:"since,omitempty"`
+	Kicked    int    `json:"kicked,omitempty"`
+	UpdatedAt string `json:"updatedAt,omitempty"`
 }
 
 // HellDropRateStatus 是 GM 面板展示的掉率状态。
@@ -111,6 +130,7 @@ type Response struct {
 	RegistrationTotal   int                  `json:"registrationTotal,omitempty"`
 	HellDropRate        *HellDropRateStatus  `json:"hellDropRate,omitempty"`
 	RiftDropRate        *RiftDropRateStatus  `json:"riftDropRate,omitempty"`
+	Maintenance         *MaintenanceStatus   `json:"maintenance,omitempty"`
 }
 
 // RegistrationQuery 分页查询邀请码 / 注册记录。

@@ -489,6 +489,10 @@ func (a *accountAPIServer) handleLogin(w http.ResponseWriter, r *http.Request) {
 		writeAccountAPIError(w, http.StatusTooManyRequests, "尝试过于频繁，请稍后再试")
 		return
 	}
+	if a.service.maintenanceEnabled() {
+		writeAccountAPIError(w, http.StatusServiceUnavailable, "服务器维护中，请稍后再试")
+		return
+	}
 
 	ctx, cancel := context.WithTimeout(r.Context(), accountAPIWriteTimeout)
 	defer cancel()
