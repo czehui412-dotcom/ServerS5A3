@@ -2,7 +2,9 @@
 
 > **本册管 PVF / EXE / npk / DLL 等客户端资源发布。** 源码与登录器本体更新 →《源码更新手册.md》；从零搭建 →《部署手册.md》；新架构设计 →《登录器架构重构设计.md》。环境常量（三副本路径、端口、compose）见《部署手册》§0。
 >
-> **当前线上（2026-11-22 起）**：PVF `f072c239`（129,680,712 B）｜EXE `2551b8a7`（112,828,416 B）｜launcher **1.0.30** / bundle `1.0.30`（sha `ec5ae925`，含维护模式）｜bootstrap **seq 162** / format=2 / game.strategy=archive｜整包 sha `88005960`（150,130,253 B，5 文件）｜服务端新二进制 `97afbf0a`（含维护踢人 action）。
+> **当前线上（2026-11-22 起）**：PVF `f072c239`（129,680,712 B）｜EXE `2551b8a7`（112,828,416 B）｜launcher **1.0.31** / bundle `1.0.31`（sha `4260b636`）｜新壳 `PurpleMagic-1.0.31.exe` sha `0e90215c`（payload `79355003`）｜bootstrap **seq 163** / format=2 / game.strategy=archive｜整包 sha `88005960`（150,130,253 B，5 文件）｜服务端 `97afbf0a`（维护踢人）。
+
+**自更新死锁坑（2026-11-22，已修）**：1.0.28~1.0.30 的 `UpdateLauncherCore` 把 bundle job 的 work 目录建在 `state-anticheat\tmp\bundle\<id>`，但 `BundleInstaller.ValidateJob`/`ReportHealthy` 要求 `install\.updates\<id>` → 自更新 Apply 必抛「更新事务目录无效」→ UI 收到"更新完成"自动关、helper 崩溃不重启 → 再开反复失败闪退。**死锁**：坏 core 无法把自己更新到修好的版本，必须**替换壳本体**（新壳内嵌修复版 payload）。1.0.31（commit `9082dcb`）已把 work 改到 `install\.updates\`。排查要点：看 `state-anticheat\tmp\bundle\` 下 job.json 全是 `phase:downloaded` 就是此坑；恢复=换 `client\PurpleMagic.exe` 为新壳，旧壳备份 `PurpleMagic.exe.bak-1.0.29`。
 
 **维护模式（2026-11-22 新增）**：GM 系统设置页可手动开/关维护。开启后一次完成：① 服务端先落盘再踢全部在线玩家并拦截新登录；② 写 nginx edge 静态状态 `https://124.221.247.221/status/maintenance.json`；③ 登录器（1.0.30+）每 30s 经 core 用信任根校验读取状态，命中维护就 **kill 自己启动的 DNF.exe**（释放 `Script.pvf` 文件句柄）+ 显示维护横幅 + 禁用登录。换 PVF / 重启服务前先开维护，验收后关维护。**这是替换 Script.pvf 的前提——不关进程会 `Text file busy`。**详见《部署手册》维护模式章节。
 
