@@ -2,7 +2,9 @@
 
 > **本册管 PVF / EXE / npk / DLL 等客户端资源发布。** 源码与登录器本体更新 →《源码更新手册.md》；从零搭建 →《部署手册.md》；新架构设计 →《登录器架构重构设计.md》。环境常量（三副本路径、端口、compose）见《部署手册》§0。
 >
-> **当前线上（2026-11-21 起）**：PVF `f072c239`（129,680,712 B）｜EXE `2551b8a7`（112,828,416 B）｜launcher **1.0.29** / bundle `1.0.29`｜bootstrap **seq 161** / format=2 / game.strategy=archive｜整包 sha `88005960`（150,130,253 B，5 文件）｜服务端 `servers5a3-local:dev`（patch `3e4a0fe0` 24 套循环）已上线。
+> **当前线上（2026-11-22 起）**：PVF `f072c239`（129,680,712 B）｜EXE `2551b8a7`（112,828,416 B）｜launcher **1.0.30** / bundle `1.0.30`（sha `ec5ae925`，含维护模式）｜bootstrap **seq 162** / format=2 / game.strategy=archive｜整包 sha `88005960`（150,130,253 B，5 文件）｜服务端新二进制 `97afbf0a`（含维护踢人 action）。
+
+**维护模式（2026-11-22 新增）**：GM 系统设置页可手动开/关维护。开启后一次完成：① 服务端先落盘再踢全部在线玩家并拦截新登录；② 写 nginx edge 静态状态 `https://124.221.247.221/status/maintenance.json`；③ 登录器（1.0.30+）每 30s 经 core 用信任根校验读取状态，命中维护就 **kill 自己启动的 DNF.exe**（释放 `Script.pvf` 文件句柄）+ 显示维护横幅 + 禁用登录。换 PVF / 重启服务前先开维护，验收后关维护。**这是替换 Script.pvf 的前提——不关进程会 `Text file busy`。**详见《部署手册》维护模式章节。
 
 **客户端目录规则（1.0.29）**：默认自动识别启动目录（登录器与 DNF.exe 同目录）；用户点「更改」手动选的目录持久化到 `identity.json` 的 `ClientDirectory`，**手动选择优先于自动识别**；所选目录必须含 `DNF.exe` + `Script.pvf`，否则拒绝。
 >
