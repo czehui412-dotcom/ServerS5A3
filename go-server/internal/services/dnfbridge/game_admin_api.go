@@ -234,6 +234,14 @@ func (a *accountAPIServer) handleGameAdmin(w http.ResponseWriter, r *http.Reques
 				out.ActivityEvents = value
 			}
 		}
+	case "maintenance":
+		var err error
+		out.Maintenance, err = s.applyMaintenance(req.Maintenance)
+		if err != nil {
+			out.OK = false
+			out.Error = "maintenance unavailable: " + err.Error()
+			s.logWarn("dnfbridge admin maintenance failed", "error", err)
+		}
 	case "online":
 		if req.CharacterID == 0 {
 			out.OK = false

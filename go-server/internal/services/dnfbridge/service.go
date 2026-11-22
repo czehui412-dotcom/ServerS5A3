@@ -49,6 +49,13 @@ import (
 
 // Service 是 DNF 最新客户端 bridge 的生命周期组件。
 type Service struct {
+	// 维护模式：由 GM 显式开关，enter 时踢掉全部在线传输。mu 保护。
+	maintenanceMu     sync.RWMutex
+	maintenanceActive bool
+	maintenanceSince  time.Time
+	maintenanceMsg    string
+	maintenanceKicked int
+
 	secretShops           currentSecretShopCatalogState
 	battlePassCatalogMu   sync.Mutex
 	battlePassCatalog     *battlepass.Catalog
