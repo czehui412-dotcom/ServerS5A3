@@ -264,6 +264,22 @@ func (a *accountAPIServer) handleGameAdmin(w http.ResponseWriter, r *http.Reques
 			out.OK = false
 			out.Error = "mailbox notification unavailable"
 		}
+	case adminapi.ActionCreditAccountWallet:
+		if req.WalletGrant == nil || strings.TrimSpace(req.WalletGrant.AccountID) == "" {
+			out.OK = false
+			out.Error = "invalid wallet grant"
+			break
+		}
+		pushed, accounts, balanceSet, err := s.creditAccountWalletProjection(*req.WalletGrant)
+		if err != nil {
+			out.OK = false
+			out.Error = "wallet projection unavailable: " + err.Error()
+			s.logWarn("dnfbridge admin wallet projection failed", "error", err)
+			break
+		}
+		out.WalletPushed = pushed
+		out.WalletAccounts = accounts
+		out.WalletBalanceSet = balanceSet
 	case "catalog":
 		var err error
 		out.PremiumTypes, err = s.currentGMAdministrativePremiumTypes()

@@ -16,7 +16,7 @@ import (
 // resetAccountPassword shares the player credential lock order and changes
 // only credentials. The durable receipt contains no recoverable password.
 func (a *accountAPIServer) resetAccountPassword(ctx context.Context, accountID string, in adminapi.PasswordReset) (*adminapi.PasswordResetResult, error) {
-	if in.Validate() != nil || accountID == "" || len(accountID) > 64 {
+	if in.Validate() != nil || accountID == "" || len(accountID) > 128 {
 		return nil, securityError(400, "invalid_reset", "重置参数无效")
 	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(in.Password), bcrypt.DefaultCost)

@@ -17,6 +17,19 @@ const Path = "/api/game/admin"
 // Offline recipients are covered by the selected-town bootstrap.
 const ActionNotifyMailbox = "notify_mailbox"
 
+// ActionCreditAccountWallet projects a wallet already committed by the gateway.
+// It never credits again: the gateway is the sole wallet writer.
+const ActionCreditAccountWallet = "credit_account_wallet"
+
+// WalletGrant is the projection request for one already-committed grant.
+// Notice is displayed on the in-game "系统" chat tab (NOTI12 type=0).
+type WalletGrant struct {
+	AccountID     string `json:"accountId"`
+	Notice        string `json:"notice,omitempty"`
+	CurrencyLabel string `json:"currencyLabel,omitempty"`
+	Amount        int64  `json:"amount,omitempty"`
+}
+
 type Request struct {
 	QQChange        *qqbinding.Change                  `json:"qqChange,omitempty"`
 	QQCheck         *qqbinding.CheckResult             `json:"qqCheck,omitempty"`
@@ -54,6 +67,8 @@ type Request struct {
 	RiftDropCount *int `json:"riftDropCount,omitempty"`
 	// 维护模式：op=enter 踢全部在线；op=status 只读当前维护标记。
 	Maintenance *MaintenanceChange `json:"maintenance,omitempty"`
+	// 泡点钱包投影：钱包已由网关落库，这里只刷新在线会话并发系统公告。
+	WalletGrant *WalletGrant `json:"walletGrant,omitempty"`
 }
 
 // MaintenanceChange 是维护模式的开关请求。Op: "enter" | "leave" | "status"。
@@ -131,6 +146,9 @@ type Response struct {
 	HellDropRate        *HellDropRateStatus  `json:"hellDropRate,omitempty"`
 	RiftDropRate        *RiftDropRateStatus  `json:"riftDropRate,omitempty"`
 	Maintenance         *MaintenanceStatus   `json:"maintenance,omitempty"`
+	WalletPushed        int                  `json:"walletPushed,omitempty"`
+	WalletAccounts      []string             `json:"walletAccounts,omitempty"`
+	WalletBalanceSet    bool                 `json:"walletBalanceSet,omitempty"`
 }
 
 // RegistrationQuery 分页查询邀请码 / 注册记录。
