@@ -104,6 +104,7 @@ func (s *Service) advanceCurrentRaidEntryRefundFlow(f *currentAntonRewardFlow, c
 			failures = append(failures, fmt.Errorf("raid %d character %d entry refund: %w", f.RaidKey, recipient.CharacterID, err))
 			continue
 		}
+		s.refundCurrentRaidAccountWeeklyForRecipient(context.Background(), repos, d.Mode, d.InstanceID, recipient.AccountID, f.CompletedAt)
 		s.logGameEvent(nil, "game-raid-entry-refund-committed", "raid_key", f.RaidKey, "instance_id", d.InstanceID, "char_id", recipient.CharacterID, "mail_id", status.MailID, "item_id", d.RefundItemID, "count", d.RefundCount)
 		if p, ok := s.onlineGameSession(recipient.CharacterID); ok {
 			id, account := recipient.CharacterID, recipient.AccountID

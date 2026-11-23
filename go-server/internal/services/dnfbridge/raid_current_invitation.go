@@ -187,6 +187,9 @@ func (s *Service) handleCurrentRaidInvitationAcceptance(session *gameSession, op
 	if !available {
 		return s.sendRaidCommandFailure(session, op)
 	}
+	if route, supported := currentRaidRouteForChannel(int(session.channel.Type)); supported && s.currentRaidCreateJoinWeeklyExhausted(session, route, s.accountIDForSession(session)) {
+		return s.sendRaidCreateJoinWeeklyRejection(session, op, currentRaidWeeklyFullMessage("加入"))
+	}
 	s.raidMu.Lock()
 	pending, found := s.currentRaidInvitations[recipient.character]
 	state := s.raids[pending.raidKey]

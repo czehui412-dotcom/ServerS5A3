@@ -112,6 +112,10 @@ func (s *Service) handleCurrentCreateRaid(session *gameSession, op uint16, body 
 		s.logGameEvent(session, "game-current-raid-create-rejected", "op", op, "reason", "route_mismatch")
 		return s.sendRaidCommandFailure(session, op)
 	}
+	if s.currentRaidCreateJoinWeeklyExhausted(session, route, s.accountIDForSession(session)) {
+		s.logGameEvent(session, "game-current-raid-create-rejected", "op", op, "reason", "account_weekly_exhausted")
+		return s.sendRaidCreateJoinWeeklyRejection(session, op, currentRaidWeeklyFullMessage("创建"))
+	}
 	if route == 2 {
 		// 现用EXE 01A55120在超时空直接以参数0打开123创建窗口；
 		// 01DF1605因此生成100。超时空没有单人模式，已校验的

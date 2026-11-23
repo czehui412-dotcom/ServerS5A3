@@ -145,7 +145,13 @@ func (s *Service) consumeRaidEntryCostAndDaily(ctx context.Context, ids []string
 	return s.consumeRaidEntryCostAndReceipt(ctx, ids, leaderID, leaderAccount, rule, daily, nil, holdings...)
 }
 
+// consumeRaidEntryCostAndReceipt 把账号周入场次数作为同一 settings 事务的一部分提交。
+// weekly 为 nil 时保持旧行为（兼容测试/旧路径）。
 func (s *Service) consumeRaidEntryCostAndReceipt(ctx context.Context, ids []string, leaderID, leaderAccount string, rule raid.AdmissionRule, daily *currentRaidDailyRule, debit *raid.EntryDebit, holdings ...raid.AdmissionRule) (int64, error) {
+	return s.consumeRaidEntryCostAndWeekly(ctx, ids, leaderID, leaderAccount, rule, daily, nil, "", debit, holdings...)
+}
+
+func (s *Service) consumeRaidEntryCostAndWeekly(ctx context.Context, ids []string, leaderID, leaderAccount string, rule raid.AdmissionRule, daily *currentRaidDailyRule, weekly *currentRaidAccountWeeklyRule, instanceID string, debit *raid.EntryDebit, holdings ...raid.AdmissionRule) (int64, error) {
 	if rule.ItemID == 0 || rule.Count <= 0 || strings.TrimSpace(leaderAccount) == "" {
 		return 0, fmt.Errorf("raid entry cost rule or owner unsupported")
 	}
@@ -202,14 +208,29 @@ func (s *Service) consumeRaidEntryCostAndReceipt(ctx context.Context, ids []stri
 			updated = append(updated, inventory)
 			accounts = append(accounts, character.AccountID)
 		}
-		if daily != nil {
-			record, _, err := settings.Load(ctx, daily.Scope)
+		if daily != nil || weekly != nil {
+			scope := ""
+			if daily != nil {
+				scope = daily.Scope
+			} else {
+				scope = weekly.Scope
+			}
+			record, _, err := settings.Load(ctx, scope)
 			if err != nil {
 				return err
 			}
-			next, err := reserveCurrentRaidDaily(record, accounts, daily)
-			if err != nil {
-				return err
+			next := record
+			if daily != nil {
+				next, err = reserveCurrentRaidDaily(record, accounts, daily)
+				if err != nil {
+					return err
+				}
+			}
+			if weekly != nil {
+				next, _, err = reserveCurrentRaidAccountWeekly(next, accounts, instanceID, weekly)
+				if err != nil {
+					return err
+				}
 			}
 			if err := settings.Save(ctx, next); err != nil {
 				return err
@@ -227,12 +248,18 @@ func (s *Service) consumeRaidEntryCostAndReceipt(ctx context.Context, ids []stri
 		}
 		return nil
 	}
-	if daily != nil {
+	if daily != nil || weekly != nil {
 		assets, ok := repos.CharacterTrade.(dnfrepo.RaidEntryAssetUnitOfWork)
 		if !ok {
-			return 0, fmt.Errorf("团本日次数与门票原子事务不可用")
+			return 0, fmt.Errorf("团本次数与门票原子事务不可用")
 		}
-		err = assets.WithinRaidEntryAssets(ctx, ids, daily.Scope, mutate)
+		scope := ""
+		if daily != nil {
+			scope = daily.Scope
+		} else {
+			scope = weekly.Scope
+		}
+		err = assets.WithinRaidEntryAssets(ctx, ids, scope, mutate)
 	} else {
 		err = unit.WithinCharacterInventoryGroup(ctx, ids, func(c dnfrepo.CharacterRepository, i dnfrepo.InventoryRepository) error { return mutate(c, i, nil) })
 	}
@@ -376,7 +403,16 @@ func (s *Service) guardRaidStartEntryCost(session *gameSession, state runtimeRai
 	if state.Battle != nil && s.options.currentClientVersion == "official-24.9" {
 		debit = &raid.EntryDebit{InstanceID: state.Battle.InstanceID, Mode: state.Battle.Mode, ItemID: rule.ItemID, Count: rule.Count, RefundItemID: rule.ItemID, RefundCount: rule.Count, PaidAt: state.Battle.StartedAt}
 	}
-	consumed, err := s.consumeRaidEntryCostAndReceipt(ctx, ids, strconv.Itoa(int(state.LeaderID)), s.accountIDForSession(session), rule, daily, debit, holdings...)
+	var weekly *currentRaidAccountWeeklyRule
+	var instanceID string
+	if state.Battle != nil && state.Battle.Mode >= 1 && state.Battle.Mode <= 3 && state.Battle.InstanceID != "" {
+		weekly, err = s.currentRaidAccountWeeklyRule(state.Battle.Mode)
+		if err != nil {
+			return dependencyFailure("weekly_rule_unavailable", err)
+		}
+		instanceID = state.Battle.InstanceID
+	}
+	consumed, err := s.consumeRaidEntryCostAndWeekly(ctx, ids, strconv.Itoa(int(state.LeaderID)), s.accountIDForSession(session), rule, daily, weekly, instanceID, debit, holdings...)
 	if err != nil {
 		return dependencyFailure("group_commit_failed", err)
 	}

@@ -77,6 +77,9 @@ func (s *Service) handleCurrentRaidApplication(session *gameSession, op uint16, 
 	if !found || err != nil {
 		return s.sendRaidCommandFailure(session, op)
 	}
+	if route, supported := currentRaidRouteForChannel(int(session.channel.Type)); supported && s.currentRaidCreateJoinWeeklyExhausted(session, route, s.accountIDForSession(session)) {
+		return s.sendRaidCreateJoinWeeklyRejection(session, op, currentRaidWeeklyFullMessage("加入"))
+	}
 	s.raidMu.Lock()
 	target := s.runtimeRaidByMemberLocked(leader.character)
 	route, supported := currentRaidRouteForChannel(int(session.channel.Type))
@@ -128,6 +131,12 @@ func (s *Service) handleCurrentRaidApproval(session *gameSession, op uint16, req
 	row, available := s.currentRaidApplicantRecord(applicant, raid.CurrentOtherChannelJoinRequest{})
 	if !available {
 		return s.sendRaidCommandFailure(session, op)
+	}
+	if route, supported := currentRaidRouteForChannel(int(applicant.channel.Type)); supported && s.currentRaidCreateJoinWeeklyExhausted(applicant, route, s.accountIDForSession(applicant)) {
+		if err := s.sendRaidCommandFailure(session, op); err != nil {
+			return err
+		}
+		return s.sendRaidCreateJoinWeeklyNotice(applicant, currentRaidWeeklyFullMessage("加入"))
 	}
 	s.raidMu.Lock()
 	state := s.raids[pending.raidKey]

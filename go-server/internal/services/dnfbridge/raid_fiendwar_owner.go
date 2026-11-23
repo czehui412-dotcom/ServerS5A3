@@ -244,6 +244,14 @@ func (s *Service) consumeCurrentFiendWarEntry(p *gameSession, state runtimeRaidS
 		if err != nil {
 			return err
 		}
+		weekly, err := s.currentRaidAccountWeeklyRuleAt(3, b.StartedAt)
+		if err != nil {
+			return err
+		}
+		next, _, err = reserveCurrentRaidAccountWeekly(next, accounts, b.InstanceID, weekly)
+		if err != nil {
+			return err
+		}
 		for _, bag := range bags {
 			if err = repo.SaveInventoryFields(ctx, i, bag, repo.InventoryFieldSlots); err != nil {
 				return err
